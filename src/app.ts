@@ -5,10 +5,16 @@ import express from 'express';
 import http from 'http';
 
 import log from './lib/log';
+import dotenv from 'dotenv';
+
+const IsDev = process.env.NODE_ENV !== 'production';
+
+if (IsDev) {
+  dotenv.config({ path: __dirname + '/../.env' });
+}
 
 const app = express();
 
-const IsDev = process.env.NODE_ENV === 'development';
 const PORT = process.env.PORT || 8080;
 const SENTRY_DSN = process.env.SENTRY_DSN;
 
