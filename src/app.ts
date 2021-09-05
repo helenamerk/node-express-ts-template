@@ -6,6 +6,7 @@ import http from 'http';
 
 import log from './lib/log';
 import dotenv from 'dotenv';
+import { runConsecutiveCommands } from './lib/testNeo4j';
 
 const IsDev = process.env.NODE_ENV !== 'production';
 
@@ -15,7 +16,7 @@ if (IsDev) {
 
 const app = express();
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8000;
 const SENTRY_DSN = process.env.SENTRY_DSN;
 
 if (!IsDev && SENTRY_DSN) {
@@ -58,6 +59,11 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).end();
 });
+
+app.get('/ddos', async (req, res) => {
+  const fns = await runConsecutiveCommands()
+  return res.status(200).json({data: fns})
+})
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

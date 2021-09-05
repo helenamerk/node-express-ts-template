@@ -1,0 +1,13 @@
+##############################
+##### CLONING REPOSITORY #####
+##############################
+
+Cloning git@github.com:helenamerk/node-express-ts-template.git as node-express-ts-template -- try = 1  ...
+Cloning into 'node-express-ts-template'...
+Successfully cloned!
+
+##############################
+##### RUNNING SETUP FILE #####
+##############################
+
+bash: ./.brev/setup.sh: No such file or directory

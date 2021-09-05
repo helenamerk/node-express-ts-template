@@ -24,6 +24,8 @@
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
     "express": "^4.16.4",
-    "pino": "^6.11.3"
+    "pino": "^6.11.3",
+    "pino-pretty": "^6.0.0",
+    "social-db": "git@github.com:helenamerk/social-db.git#dabd2c2e3a612bed7020a5203f6c690f5e31fd4c"
   }
 }
