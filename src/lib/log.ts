@@ -1,4 +1,4 @@
-import Pino from "pino";
+import Pino from 'pino';
 
 const errorSerializer = (event: any) => {
   if (!event || !event.stack) {
@@ -16,7 +16,7 @@ const errorSerializer = (event: any) => {
 const opts: Pino.LoggerOptions = {
   prettyPrint: {},
   redact: {
-    paths: ["password"],
+    paths: ['password'],
     remove: true,
   },
   serializers: {
@@ -25,7 +25,7 @@ const opts: Pino.LoggerOptions = {
   },
 };
 
-if (process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === 'development') {
   opts.prettyPrint = { colorize: true };
 }
 

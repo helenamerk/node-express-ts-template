@@ -1,11 +1,20 @@
 import Sentry from '@sentry/node';
 import Tracing from '@sentry/tracing';
 import cors from 'cors';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import http from 'http';
+import { v4 as uuid } from 'uuid';
 
 import log from './lib/log';
 import dotenv from 'dotenv';
+import { socketize } from './services/socketio';
+import {
+  IAuthenticatedRequest,
+  IPreAuthenticatedRequest,
+} from './types/definitionfile';
+import { ParseUserHeader } from './middleware/parse-user-header';
+import { generateAuthToken } from './lib/auth';
+import { AuthMiddleware } from './middleware/authenticate';
 
 const IsDev = process.env.NODE_ENV !== 'production';
 
@@ -50,17 +59,65 @@ app.use(cors());
 // Set universal middleware
 app.set('trust proxy', 1);
 
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('🤠');
 });
 
 // Health endpoint for AWS ELB
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.status(200).end();
 });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.use(ParseUserHeader);
+
+if (process.env.NODE_ENV === 'production') {
+  // Sentry User identification
+  app.use(
+    (req: IPreAuthenticatedRequest, res: Response, next: NextFunction) => {
+      if (req.userId)
+        Sentry.configureScope((scope) => {
+          scope.setUser({ id: req.userId });
+        });
+      next();
+    }
+  );
+}
+
+app.post('/register', (req: IPreAuthenticatedRequest, res: Response) => {
+  const newUserId = uuid();
+  const userToken = generateAuthToken(newUserId, req.device);
+
+  // TODO: create a user model somewhere! pass in user data! Idk!
+
+  return res.status(200).json({ token: userToken });
+});
+
+app.get(
+  '/validate-token',
+  AuthMiddleware,
+  (req: IPreAuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      return res.status(200).json({ message: 'token is valid' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Logger
+// TODO
+// app.use(
+//   requestLogger.configure(logger, (req, res) => ({
+//     userId: req.userId,
+//     authed: !!req.userId,
+//     device: req.device,
+//   }))
+// );
+
+//////
 
 // The sentry error handler must be before any other error middleware and after all controllers
 if (!IsDev && SENTRY_DSN) {
@@ -80,6 +137,9 @@ const serverTimeout = 310000;
 server.timeout = serverTimeout;
 server.keepAliveTimeout = serverTimeout;
 server.headersTimeout = serverTimeout;
+
+// wrap the http server with a websocket protocol with socketio
+socketize(server);
 
 server.listen(PORT, () => {
   log.info(`server is listening on ${PORT}`);
