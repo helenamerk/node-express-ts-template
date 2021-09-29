@@ -4,6 +4,7 @@ import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import http from 'http';
 import { v4 as uuid } from 'uuid';
+import formidableMiddleware from 'express-formidable';
 
 import log from './lib/log';
 import dotenv from 'dotenv';
@@ -15,6 +16,7 @@ import {
 import { ParseUserHeader } from './middleware/parse-user-header';
 import { generateAuthToken } from './lib/auth';
 import { AuthMiddleware } from './middleware/authenticate';
+import { getUser, setUser } from './db/users';
 
 const IsDev = process.env.NODE_ENV !== 'production';
 
@@ -68,6 +70,7 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).end();
 });
 
+app.use(formidableMiddleware());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -86,14 +89,42 @@ if (process.env.NODE_ENV === 'production') {
   );
 }
 
-app.post('/register', (req: IPreAuthenticatedRequest, res: Response) => {
-  const newUserId = uuid();
-  const userToken = generateAuthToken(newUserId, req.device);
+app.post(
+  '/register',
+  (req: IPreAuthenticatedRequest, res: Response, next: NextFunction) => {
+    const newUserId = uuid();
+    const userToken = generateAuthToken(newUserId, req.device);
 
-  // TODO: create a user model somewhere! pass in user data! Idk!
+    if (!req.fields) return res.status(400).json({ message: 'invalid format' });
 
-  return res.status(200).json({ token: userToken });
-});
+    const { meetingUrl, name, linkedInUrl } = req.fields;
+
+    setUser({
+      userId: newUserId,
+      meetingUrl: meetingUrl.toString(),
+      name: name.toString(),
+      linkedInUrl: linkedInUrl.toString(),
+    });
+
+    // TODO: create a user model somewhere! pass in user data! Idk!
+
+    return res.status(200).json({ token: userToken });
+  }
+);
+
+app.get(
+  '/me',
+  AuthMiddleware,
+  // @ts-ignore
+  async (req: IAuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const user = await getUser(req.userId);
+      return res.status(200).json({ user });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 app.get(
   '/validate-token',
